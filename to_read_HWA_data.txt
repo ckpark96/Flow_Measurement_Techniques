@@ -1,0 +1,6 @@
+% use the following line to read the HW data in matlab
+data = dlmread(FileName,'',23,0);
+
+% you can look at the HW data files by opening them via a text reader (e.g. WordPad, NotePad++...)
+
+% The first column of the data corresponds to time in seconds, the second column to the voltage.
