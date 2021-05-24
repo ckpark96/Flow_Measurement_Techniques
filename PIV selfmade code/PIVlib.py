@@ -97,5 +97,5 @@ class Sequence():
         
 
 
-Sq = Sequence(['Alpha5_dt100/B00003.tif'])
+Sq = Sequence(['../PIV_data/Alpha0_dt1/B00001.tif'])
 Sq.PIV(30,s2n_cut=1,size=64)
