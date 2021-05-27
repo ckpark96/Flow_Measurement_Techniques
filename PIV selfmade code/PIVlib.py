@@ -28,7 +28,7 @@ def fit_gaussian(image,ic,jc,dx):
 def process_correlation(image):
     # plt.imshow(image)
     # plt.show()
-    dx = 10
+    dx = 3
     tmp = np.where(image==1)
     if tmp[0].shape[0] > 1:
         print("yeet")
@@ -40,7 +40,7 @@ def process_correlation(image):
 
     image[max(imax-dx,0):min(imax+dx+1,image.shape[0]),max(jmax-dx,0):min(jmax+dx+1,image.shape[1])] = 0
 
-    if (tofit.shape[0]<21) or (tofit.shape[1]<21):
+    if (tofit.shape[0]<(2*dx+1)) or (tofit.shape[1]<(2*dx+1)):
         # fallback to not subpixel because i am lazy atm
         print("Yeet")
     else:
@@ -109,7 +109,7 @@ class Sequence():
     def init_optical(self, M, pmm):
         raise NotImplementedError
 
-    def PIV(self, N, size=64, num=0, s2n_cut=2, bbi=[0,1e12],bbj=[0,1e12]):
+    def PIV(self, N, size=64, num=0, s2n_cut=2, vavg=10):
         # image1 = load_image_to_array(self.images[num])
         # image2 = load_image_to_array(self.images[num+1])
         image1,image2 = splitimage(load_image_to_array(self.images[num]))
@@ -174,7 +174,7 @@ class Sequence():
                 # dj[i,j] = jpos-jj[i,j]
                 # sn[i,j] = s2n
         print(s2n_cut)
-        fil = (sn >= s2n_cut)
+        fil = (sn >= s2n_cut) & (np.sqrt(dj**2+di**2) < 2*vavg)
         
         print(c)
         print(np.sum(fil)/ii.shape[0]/ii.shape[1])
@@ -188,10 +188,11 @@ class Sequence():
         # plt.scatter(jj[fil],ii[fil],c="r",marker="x")
         ax[1].boxplot(sn[fil].flatten())
         ax[1].boxplot(np.sqrt(dj**2+di**2)[fil].flatten())
-        ax[0].set_ylim(ax[0].get_ylim()[::-1])
+        # ax[0].set_ylim(ax[0].get_ylim()[::-1])
+        ax[0].imshow(self.mask, cmap="spring")
         plt.show()
         
 
 
-Sq = Sequence("../PIV_data/Alpha0_dt100/","../PIV_matlab_codes/WIDIM/Mask_Alpha_0.mat", "../PIV_data/Calibration/B00001.tif")
-Sq.PIV(30,s2n_cut=1.5,size=128, num=7)
+Sq = Sequence("../PIV_data/Alpha15_dt100/","../PIV_matlab_codes/WIDIM/Mask_Alpha_15.mat", "../PIV_data/Calibration/B00001.tif")
+Sq.PIV(40,s2n_cut=1.1,size=64, num=7)
