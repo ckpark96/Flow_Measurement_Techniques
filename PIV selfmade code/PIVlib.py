@@ -9,9 +9,9 @@ import os
 import multiprocessing
 
 """
-TODO: Loop Parallelization
-TODO: Proper scaling of values to velocity (May not even be feasible)
-TODO: Subpixel interpolation
+TODO: Loop Parallelization (May not even be feasible)
+TODO: Proper scaling of values to velocity
+TODO: Subpixel interpolation (Done)
 """
 
 def fit_gaussian(image,ic,jc,dx):
