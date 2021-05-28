@@ -61,7 +61,10 @@ def splitimage(im):
     return im[:im.shape[0]//2],im[im.shape[0]//2:]
 
 def window(image,i,j,size):
-    w = image[i:i+size,j:j+size]
+    image = np.pad(image,size, mode="wrap")
+    i = i+size
+    j = j+size
+    w = image[i:(i+size),j:(j+size)]
     return w - np.average(w)
 
 def normalize(window):
@@ -69,7 +72,7 @@ def normalize(window):
     window -= window.mean()
     std = window.std()
 
-    return np.clip(window,0,5*std)
+    return np.clip(window,-5*std,5*std)
 
 def gen_mask_array(image, x, y):
     img = Image.new('1', (image.shape[1], image.shape[0]),  0)
@@ -81,6 +84,29 @@ def gen_mask_array(image, x, y):
     img1.line(polygon, fill=1, width=10)
     mask = np.array(img)
     return mask
+
+class PIV_data():
+    def __init__(self, xloc, yloc, u, v, s2n, filtr, image):
+        self.x  = xloc
+        self.y = yloc
+        self.u = u
+        self.v = v
+        self.sn = s2n
+        self.fil = filtr
+        self.image = image
+
+    def drawimage(self):
+        plt.pcolormesh(np.linspace(0,np.max(self.x),self.image.shape[0]),np.linspace(0,np.max(self.y),self.image.shape[1]), self.image,shading='gouraud')
+
+
+    def vector_speed_plot(self):
+        # self.drawimage()
+        plt.pcolormesh(self.x,self.y, np.sqrt(self.u**2+self.v**2),shading='gouraud')
+        plt.quiver(self.x[self.fil],self.y[self.fil],self.u[self.fil],self.v[self.fil],angles='xy')
+        plt.axis("equal")
+        plt.show()
+
+
 class Sequence():
 
     def __init__(self, folder, mask, cali, dt=0.01):
@@ -97,6 +123,7 @@ class Sequence():
         self.ymask = mask["ymask"]+1
         self.mask = None
         self.cali = load_image_to_array(cali)
+        self.dt = dt
 
         image1,image2 = splitimage(load_image_to_array(self.images[0]))
         self.avg = (image1+image2)/2/len(self.images)
@@ -118,6 +145,7 @@ class Sequence():
 
         image2 = image2 - self.avg#np.average(image2)
         image1 = image1 - self.avg
+        mpp = 1.5*0.1/image1.shape[1]
         # image2 = normalize(image2)
         # image1 = normalize(image1)
         image1[self.mask] = 0
@@ -138,6 +166,8 @@ class Sequence():
 
         ii = np.linspace(size,im-size,Nx,dtype=np.int64)
         jj = np.linspace(size,jm-size,Ny,dtype=np.int64)
+        ii = np.linspace(0,im-1,Nx,dtype=np.int64)
+        jj = np.linspace(0,jm-1,Ny,dtype=np.int64)
 
         ii,jj = np.meshgrid(ii,jj)
         di,dj = np.zeros_like(ii,dtype=np.float64),np.zeros_like(ii,dtype=np.float64)
@@ -145,16 +175,18 @@ class Sequence():
         ic, jc = [], []
         fil = np.zeros_like(ii)
         c = 0
+        subsize = 4*vavg
 
         def correlator(i,j):
             if self.mask[ii[i,j],jj[i,j]]:
                 return
             window1 = window(image1,ii[i,j]-size//2,jj[i,j]-size//2,size)
-            corr = signal.correlate(image2, window1, mode="same", method="fft")
+            window2 = window(image2,ii[i,j]-subsize//2,jj[i,j]-subsize//2,subsize)
+            corr = signal.correlate(window2, window1, mode="same", method="fft")
             corr = corr/np.max(corr)
             ipos,jpos,s2n = process_correlation(corr)
-            di[i,j] = ipos-ii[i,j]
-            dj[i,j] = jpos-jj[i,j]
+            di[i,j] = ipos-ii[i,j]+ii[i,j]-subsize//2
+            dj[i,j] = jpos-jj[i,j]+jj[i,j]-subsize//2
             sn[i,j] = s2n
             return
         # a_pool = multiprocessing.Pool()
@@ -181,6 +213,18 @@ class Sequence():
         print(sn[fil])
         dj[np.invert(fil)] = np.NAN
         di[np.invert(fil)] = np.NAN
+        ii = np.array(ii,dtype=np.float64)
+        jj = np.array(jj,dtype=np.float64)
+
+        ii *= mpp
+        jj *= mpp
+
+        di *= mpp/self.dt
+        dj *= mpp/self.dt
+
+        return PIV_data(jj,ii,dj,di,sn,fil, image1)
+
+
         fig, ax = plt.subplots(1,2)
         # ax[0].imshow(image1)
         ax[0].pcolormesh(jj,ii, np.sqrt(dj**2+di**2),shading='gouraud')
@@ -194,5 +238,6 @@ class Sequence():
         
 
 
-Sq = Sequence("../PIV_data/Alpha15_dt100/","../PIV_matlab_codes/WIDIM/Mask_Alpha_15.mat", "../PIV_data/Calibration/B00001.tif")
-Sq.PIV(40,s2n_cut=1.1,size=64, num=7)
+Sq = Sequence("../PIV_data/Alpha15_dt100/","../PIV_matlab_codes/WIDIM/Mask_Alpha_15.mat", "../PIV_data/Calibration/B00001.tif", dt=0.6)
+res = Sq.PIV(50,s2n_cut=1.5,size=64, num=7)
+res.vector_speed_plot()
