@@ -1,12 +1,15 @@
+from typing import Tuple
 import numpy as np
 from PIL import Image, ImageDraw
 import matplotlib.pyplot as plt
+from numpy.lib.function_base import average
 from scipy import signal
 from scipy import stats
 import scipy
 import scipy.io
 import os
 import multiprocessing
+import pickle
 
 """
 TODO: Loop Parallelization (May not even be feasible)
@@ -101,15 +104,55 @@ class PIV_data():
 
     def vector_speed_plot(self):
         # self.drawimage()
-        plt.pcolormesh(self.x,self.y, np.sqrt(self.u**2+self.v**2),shading='gouraud')
+        cs = plt.contourf(self.x,self.y, np.sqrt(self.u**2+self.v**2))
         plt.quiver(self.x[self.fil],self.y[self.fil],self.u[self.fil],self.v[self.fil],angles='xy')
         plt.axis("equal")
+        plt.colorbar(cs)
         plt.show()
+
+    def u_vel_plot(self):
+        # self.drawimage()
+        cs = plt.contourf(self.x,self.y, self.u,25)
+        plt.axis("equal")
+        plt.colorbar(cs)
+        plt.show()
+
+
+    def __add__(self,other):
+        u = self.u+other.u
+        v = self.v+other.v
+        fil = self.fil&other.fil
+        u[np.invert(fil)] = np.NAN
+        v[np.invert(fil)] = np.NAN
+
+        return PIV_data(self.x, self.y,  u,v,self.sn,fil,self.image)
+
+    def divide(self, scalar):
+        self.u /= scalar
+        self.v /= scalar
+
+def RANS(sequence):
+    u = np.zeros((sequence[0].u.shape[0],sequence[0].u.shape[1],len(sequence)))
+    v = np.zeros_like(u)
+    fil = np.zeros_like(sequence[0].fil)
+
+    for i,s in enumerate(sequence):
+        u[:,:,i] = s.u
+        v[:,:,i] = s.v
+        fil = fil | s.fil
+
+    x,y,sn,im = sequence[0].x,sequence[0].y,sequence[0].sn,sequence[0].image
+    avg =   PIV_data(x,y,np.nanmean(u,axis=2),np.nanmean(v,axis=2),sn,fil,im)
+    std =   PIV_data(x,y,np.nanstd(u,axis=2),np.nanmean(v,axis=2),sn,fil,im)
+
+    return avg,std
+
+
 
 
 class Sequence():
 
-    def __init__(self, folder, mask, cali, dt=0.01):
+    def __init__(self, folder, mask, cali, dt=0.0001):
         """
         Arguments:
         images:     file path to image files
@@ -130,22 +173,25 @@ class Sequence():
         for i in range(1,len(self.images)):
             image1,image2 = splitimage(load_image_to_array(self.images[i]))
             self.avg += (image1+image2)/2/len(self.images)
-        print("")
+        plt.imshow(self.cali)
+        plt.show()
 
 
     def init_optical(self, M, pmm):
         raise NotImplementedError
+    def get_length(self):
+        return len(self.images)
 
-    def PIV(self, N, size=64, num=0, s2n_cut=2, vavg=10):
+    def PIV(self, N, size=64, num=0, s2n_cut=2, vavg=8):
         # image1 = load_image_to_array(self.images[num])
         # image2 = load_image_to_array(self.images[num+1])
         image1,image2 = splitimage(load_image_to_array(self.images[num]))
-        if not self.mask:
+        if self.mask is None:
             self.mask = gen_mask_array(image1, self.xmask, self.ymask)
 
         image2 = image2 - self.avg#np.average(image2)
         image1 = image1 - self.avg
-        mpp = 1.5*0.1/image1.shape[1]
+        mpp = 0.16732/image1.shape[1]
         # image2 = normalize(image2)
         # image1 = normalize(image1)
         image1[self.mask] = 0
@@ -175,7 +221,7 @@ class Sequence():
         ic, jc = [], []
         fil = np.zeros_like(ii)
         c = 0
-        subsize = 4*vavg
+        subsize = 2*vavg+size
 
         def correlator(i,j):
             if self.mask[ii[i,j],jj[i,j]]:
@@ -206,21 +252,25 @@ class Sequence():
                 # dj[i,j] = jpos-jj[i,j]
                 # sn[i,j] = s2n
         print(s2n_cut)
-        fil = (sn >= s2n_cut) & (np.sqrt(dj**2+di**2) < 2*vavg)
+        ii = np.array(ii,dtype=np.float64)
+        jj = np.array(jj,dtype=np.float64)
+
+        ii *= mpp
+        jj *= mpp
+        print(np.average(di))
+        print(np.average(dj))
+
+        di *= mpp/self.dt
+        dj *= mpp/self.dt
+        umag = np.sqrt(dj**2+di**2)
+        fil = (sn >= s2n_cut) & (umag < 13)
         
         print(c)
         print(np.sum(fil)/ii.shape[0]/ii.shape[1])
         print(sn[fil])
         dj[np.invert(fil)] = np.NAN
         di[np.invert(fil)] = np.NAN
-        ii = np.array(ii,dtype=np.float64)
-        jj = np.array(jj,dtype=np.float64)
 
-        ii *= mpp
-        jj *= mpp
-
-        di *= mpp/self.dt
-        dj *= mpp/self.dt
 
         return PIV_data(jj,ii,dj,di,sn,fil, image1)
 
@@ -238,6 +288,21 @@ class Sequence():
         
 
 
-Sq = Sequence("../PIV_data/Alpha15_dt100/","../PIV_matlab_codes/WIDIM/Mask_Alpha_15.mat", "../PIV_data/Calibration/B00001.tif", dt=0.6)
-res = Sq.PIV(50,s2n_cut=1.5,size=64, num=7)
-res.vector_speed_plot()
+Sq = Sequence("../PIV_data/Alpha15_dt100/","../PIV_matlab_codes/WIDIM/Mask_Alpha_15.mat", "../PIV_data/Calibration/B00001.tif")
+l = 25#Sq.get_length()
+N = 150
+Sn = 1.0
+s = 64
+call = lambda x: Sq.PIV(N,s2n_cut=Sn,size=s, num=x)
+call(99).u_vel_plot()
+# res = []
+# for i in range(0,l):
+#     res.append(call(i))
+
+# avg,rms = RANS(res)
+# avg.u_vel_plot()
+# pickle.dump(avg, open("avg2.pckl","wb"))
+# pickle.dump(rms, open("rms2.pckl","wb"))
+avg = pickle.load(open("avg.pckl","rb"))
+avg.u_vel_plot()
+
