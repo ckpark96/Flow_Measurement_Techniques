@@ -2,9 +2,9 @@ clc; clear; close all;
 
 %% statistical analysis of the velocity field data
 % folder containing the velocity fields
-FoldRead=''; % (*** fill in ***)
+FoldRead='C:\Users\abett\Desktop\FMT\Assignment\PIV_data\Alpha5_dt100'; % (*** fill in ***)
 first=1;    % (*** fill in ***) first velocity field to be analyzed
-last=100;     % (*** fill in ***) last velocity field to be analyzed
+last=20;     % (*** fill in ***) last velocity field to be analyzed
 
 % do not modify the three lines below
 FileRoot = 'B0';
