@@ -2,9 +2,9 @@ clc; clear; close all;
 
 %% data
 % Folder where the calibration image is stored
-FoldRead = ' '; %(*** fill in ***)
+FoldRead = 'C:\Users\abett\Desktop\FMT\Assignment\PIV_data\Calibration\'; %(*** fill in ***)
 FileRead = 'B00001.tif';
-pix_size =  ; % [microns] (*** fill in ***)
+pix_size =  4.4; % [microns] (*** fill in ***)
 
 %% Determination of the magnification
 % read the image
@@ -16,11 +16,11 @@ ttl = title('Select two reference points for calibration');
 % click on two points at known distance
 [x,y] =  ginput(2);
 % distance between two points in pixels (*** fill in ***)
-dist_px = ;
+dist_px = ( (x(2)-x(1))^2 + (y(2)-y(1))^2 )^0.5 ;
 % input the distance in mm
 dist = input('Distance in mm? '); 
 % determine the magnification factor % (*** fill in ***)
-M = ; 
+M = ( dist_px*pix_size*10^(-6) ) / ( dist*10^(-3) ); 
 fprintf(['Magnification factor = ' num2str(M,'%.5f') '\n']);
 
 %% origin selection (in pixels)
