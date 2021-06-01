@@ -158,6 +158,7 @@ class Sequence():
         images:     file path to image files
         """
         images = os.listdir(folder)
+        images = [f for f in images if f[-1]=="f"]
         self.images=images
         for i in range(len(self.images)):
             self.images[i] = folder+self.images[i]
