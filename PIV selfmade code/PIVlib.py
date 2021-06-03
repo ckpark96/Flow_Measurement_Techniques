@@ -10,7 +10,7 @@ import scipy.io
 import os
 import multiprocessing
 import pickle
-
+import plotrc
 """
 TODO: Loop Parallelization (May not even be feasible)
 TODO: Proper scaling of values to velocity
@@ -108,6 +108,8 @@ class PIV_data():
         plt.quiver(self.x[self.fil],self.y[self.fil],self.u[self.fil],self.v[self.fil],angles='xy')
         plt.axis("equal")
         plt.colorbar(cs)
+        plt.xlabel("x [m]")
+        plt.ylabel("y [m]")
         plt.show()
 
     def u_vel_plot(self):
@@ -115,7 +117,28 @@ class PIV_data():
         cs = plt.contourf(self.x,self.y, self.u,25)
         plt.axis("equal")
         plt.colorbar(cs)
+        plt.xlabel("x [m]")
+        plt.ylabel("y [m]")
         plt.show()
+
+    def u_at_x(self,x,other):
+        fig, ax = plt.subplots(1,1,squeeze=False,figsize=(16,9))
+        xa = self.x[:,0]
+        idx = (np.abs(xa - x)).argmin()
+        ax[0,0].plot(self.u[idx,:],self.y[idx,:])
+        ax[0,0].fill_betweenx(self.y[idx,:],self.u[idx,:]-other.u[idx,:],self.u[idx,:]+other.u[idx,:],alpha=0.3)
+        #ax[0,0].loglog(x, y, marker = "s", color='black', markerfacecolor='none', markeredgewidth=2, markersize=6, label="test")
+        #ax[0,0].set_xlim(0,x[-1])
+        ax[0,0].grid(True,which="major",color="#999999",alpha=0.75)
+        ax[0,0].grid(True,which="minor",color="#DDDDDD",ls="--",alpha=0.50)
+        ax[0,0].minorticks_on()
+        ax[0,0].tick_params(which='major', length=10, width=2, direction='inout')
+        ax[0,0].tick_params(which='minor', length=5, width=2, direction='in')
+        plt.xlabel("u [m/s]")
+        plt.ylabel("y [m]")
+        plt.tight_layout()
+        plt.show()
+        
 
 
     def __add__(self,other):
@@ -193,6 +216,7 @@ class Sequence():
         image2 = image2 - self.avg#np.average(image2)
         image1 = image1 - self.avg
         mpp = 0.16732/image1.shape[1]
+        print(1555*mpp)
         # image2 = normalize(image2)
         # image1 = normalize(image1)
         image1[self.mask] = 0
@@ -289,13 +313,13 @@ class Sequence():
         
 
 
-Sq = Sequence("../PIV_data/Alpha15_dt100/","../PIV_matlab_codes/WIDIM/Mask_Alpha_15.mat", "../PIV_data/Calibration/B00001.tif")
+# Sq = Sequence("../PIV_data/Alpha15_dt100/","../PIV_matlab_codes/WIDIM/Mask_Alpha_15.mat", "../PIV_data/Calibration/B00001.tif")
 l = 25#Sq.get_length()
 N = 150
 Sn = 1.0
 s = 64
 call = lambda x: Sq.PIV(N,s2n_cut=Sn,size=s, num=x)
-call(99).u_vel_plot()
+# call(99).u_vel_plot()
 # res = []
 # for i in range(0,l):
 #     res.append(call(i))
@@ -304,6 +328,7 @@ call(99).u_vel_plot()
 # avg.u_vel_plot()
 # pickle.dump(avg, open("avg2.pckl","wb"))
 # pickle.dump(rms, open("rms2.pckl","wb"))
-avg = pickle.load(open("avg.pckl","rb"))
-avg.u_vel_plot()
+avg = pickle.load(open("avg2.pckl","rb"))
+rms = pickle.load(open("rms2.pckl","rb"))
+avg.u_at_x(0.16,rms)
 
