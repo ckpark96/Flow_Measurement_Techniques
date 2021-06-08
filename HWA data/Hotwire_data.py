@@ -9,7 +9,8 @@ import numpy as np
 import os 
 from matplotlib import pyplot as plt
 
-#import statsmodels as sm 
+#import statsmodels.api as sm
+
 #import statsmodels.tsa.stattools as sm
 #import statsmodels.api as sm 
 
@@ -43,9 +44,10 @@ def get_velocity(coeffcients,volt):
 
 x_volt = np.linspace(np.min(volt_cal),np.max(volt_cal),100)
 velo_cal_test = get_velocity(cal_coeffcient,x_volt)
-plt.plot(velo_cal_test, x_volt)
-plt.plot(vel_cal, volt_cal, 'o')
-plt.plot()
+plt.plot(velo_cal_test, x_volt, r"$4^{\mathrm{th}}$-order polynomial")
+plt.plot(vel_cal, volt_cal, 'o', label = "Calibration data ")
+plt.xlabel( )
+plt.ylabel(r"$E [V] ")
 plt.show()
 
 
@@ -56,6 +58,9 @@ volt_corr = correlation_data[:,1]
 auto_corr = np.correlate(volt_corr, volt_corr, mode = 'full')/len(volt_corr)
 auto_corr = auto_corr[ int (auto_corr.size/2): ]
 auto_corr_coeff= np.corrcoef(volt_corr, volt_corr)
+
+
+
 
 
 plt.figure()
@@ -104,6 +109,7 @@ for i, alpha in enumerate([0,5,15]):
     #plt.plot( velcoity_rms[i], positions, 'o-')
     plt.xlabel(r"${U}$ [-]")
     plt.ylabel("y [mm]")
+    plt.grid()
     plt.legend() 
 plt.show()
     
