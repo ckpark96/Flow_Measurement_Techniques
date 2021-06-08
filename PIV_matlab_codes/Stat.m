@@ -2,9 +2,9 @@ clc; clear; close all;
 
 %% statistical analysis of the velocity field data
 % folder containing the velocity fields
-FoldRead='C:\Users\abett\Desktop\FMT\Assignment\PIV_data\Alpha5_dt100'; % (*** fill in ***)
+FoldRead='C:\Users\abett\Desktop\FMT\Assignment\PIV_data\Alpha15_dt100\PIV_32x32_0%ov\'; % (*** fill in ***)
 first=1;    % (*** fill in ***) first velocity field to be analyzed
-last=20;     % (*** fill in ***) last velocity field to be analyzed
+last=100;     % (*** fill in ***) last velocity field to be analyzed
 
 % do not modify the three lines below
 FileRoot = 'B0';
@@ -29,10 +29,21 @@ end
 
 % compute the mean velocity components and the fluctuations
 % root-mean-square (*** fill in ***)
-uMean = ;
-uStd = ;
-vMean = ;
-vStd = ;
+uMean = sum(uTot,3)/(last-first+1); % first and last are related to the names, so we need to append 1 to make we get the right number
+uStd = zeros(J,I);
+for i=1:last-first+1
+    tmp = uTot(:,:,i)-uMean;
+    uStd(:,:) = uStd(:,:) + tmp.*tmp; % square
+end
+uStd = sqrt( (uStd.*uStd)/(last-first+1) ); % mean, root
+
+vMean = sum(vTot,3)/(last-first+1);
+vStd = zeros(J,I);
+for i=1:last-first+1
+    tmp = vTot(:,:,i)-vMean; 
+    vStd(:,:) = vStd(:,:) + tmp.*tmp; % square
+end
+vStd = sqrt( vStd/(last-first+1) ); % mean, root
 
 %% create the folder foldw (where the data are written) if it doesn't exist
 %% do not modify this part
